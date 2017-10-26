@@ -1,0 +1,6 @@
+Host github.com
+User tailcloud14916@gmail.com
+Hostname ssh.github.com
+PrederredAuthentications publickey
+IdentityFile /c/Users/yvshih/.ssh/id_rsa 
+Port 443
