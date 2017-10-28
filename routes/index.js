@@ -43,6 +43,21 @@ router.get('/token',
         }
       });
     });
+function exit(message) {
+    console.log(message);
+    console.log('Press any key to exit');
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on('data', process.exit.bind(process, 0));
+}
+
+getDatabase()
+.then(() => getCollection())
+.then(() => getFamilyDocument(config.documents.Andersen))
+.then(() => getFamilyDocument(config.documents.Wakefield))
+.then(() => { exit(`Completed successfully`); })
+.catch((error) => { exit(`Completed with error ${JSON.stringify(error)}`) });
+
 function rand(m) {
   m = m > 16 ? 16 : m;
   var num = Math.random().toString();
@@ -71,7 +86,7 @@ function getDatabase() {
     return new Promise((resolve, reject) => {
         client.readDatabase(databaseUrl, (err, result) => {
             if (err) {
-                if (err.code == HttpStatusCodes.NOTFOUND) {
+                if (err.code == "404") {
                     client.createDatabase(config.database, (err, created) => {
                         if (err) reject(err)
                         else resolve(created);
@@ -91,7 +106,7 @@ function getCollection() {
     return new Promise((resolve, reject) => {
         client.readCollection(collectionUrl, (err, result) => {
             if (err) {
-                if (err.code == HttpStatusCodes.NOTFOUND) {
+                if (err.code == "404") {
                     client.createCollection(databaseUrl, config.collection, { offerThroughput: 400 }, (err, created) => {
                         if (err) reject(err)
                         else resolve(created);
@@ -105,4 +120,25 @@ function getCollection() {
         });
     });
 }
+function getFamilyDocument(document) {
+    let documentUrl = `${collectionUrl}/docs/${document.id}`;
+    console.log(`Getting document:\n${document.id}\n`);
+
+    return new Promise((resolve, reject) => {
+        client.readDocument(documentUrl, { partitionKey: document.district }, (err, result) => {
+            if (err) {
+                if (err.code == "404") {
+                    client.createDocument(collectionUrl, document, (err, created) => {
+                        if (err) reject(err)
+                        else resolve(created);
+                    });
+                } else {
+                    reject(err);
+                }
+            } else {
+                resolve(result);
+            }
+        });
+    });
+};
 module.exports = router;
