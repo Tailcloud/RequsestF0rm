@@ -4,13 +4,11 @@ const graphHelper = require('../util/graphWorker.js');
 const passport = require('passport');
 var tokens = "";
 /*new for db*/
-var config = require("../util/config");
+var MongoClient = require("mongodb").MongoClient;
+var assert = require('assert');
+var ObjectId = require('mongodb').ObjectID;
+var url = 'mongodb://localhost:27017/requestf0rmdb';
 
-var documentClient = require('documentdb').DocumentClient;
-var client = new documentClient(config.endpoint,{"masterKey":config.primaryKey});
-var databaseUrl = `dbs/${config.database.id}`;
-var collectionUrl = `${databaseUrl}/colls/${config.collection.id}`;
-var authCode ="";
 router.get('/',(req,res)=>{
   if(!req.isAuthenticated()){
     res.render('login');
@@ -43,20 +41,6 @@ router.get('/token',
         }
       });
     });
-function exit(message) {
-    console.log(message);
-    console.log('Press any key to exit');
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.on('data', process.exit.bind(process, 0));
-}
-
-getDatabase()
-.then(() => getCollection())
-.then(() => getFamilyDocument(config.documents.Andersen))
-.then(() => getFamilyDocument(config.documents.Wakefield))
-.then(() => { exit(`Completed successfully`); })
-.catch((error) => { exit(`Completed with error ${JSON.stringify(error)}`) });
 
 function rand(m) {
   m = m > 16 ? 16 : m;
@@ -73,6 +57,38 @@ function showAuthCode(req, res) {
     display_name: req.user.profile.displayName,
     email_address: req.user.profile.emails[0].address
   });
+  MongoClient.connect(url, function(err, db) {
+  assert.equal(null,err);
+  console.log("connected correctly to server");
+
+  var rscols = db.collection("users");
+  // var cursor = events.find({"token":token});
+  rscols.find({"token":tokens}).toArray(function(err, items) {
+        if (err) {
+          console.log(err);
+          res.status(500).send();
+        } else if(items.length==0){
+          rscols.insert({
+                  "token":tokens,
+                  "AuthCode": authCode,
+                  "name": req.user.profile.displayName,
+                  "email": req.user.profile.emails[0].address
+                  },function(err,docs){
+                    if(err){
+                      db.close();
+                      console.log("Data inserted failed:"+err);
+                    }else{
+                      console.log("Data inserted successfully:"+docs)
+                    }
+                });
+          res.status(200).send();
+        }else{
+          console.log(items[0].password);
+          res.status(409).send();
+
+        }
+      });
+});
 }
 function renderError(e, res) {
   e.innerError = (e.response) ? e.response.text : '';
@@ -80,65 +96,4 @@ function renderError(e, res) {
     error: e
   });
 }
-function getDatabase() {
-    console.log(`Getting database:\n${config.database.id}\n`);
-
-    return new Promise((resolve, reject) => {
-        client.readDatabase(databaseUrl, (err, result) => {
-            if (err) {
-                if (err.code == "404") {
-                    client.createDatabase(config.database, (err, created) => {
-                        if (err) reject(err)
-                        else resolve(created);
-                    });
-                } else {
-                    reject(err);
-                }
-            } else {
-                resolve(result);
-            }
-        });
-    });
-}
-function getCollection() {
-    console.log(`Getting collection:\n${config.collection.id}\n`);
-
-    return new Promise((resolve, reject) => {
-        client.readCollection(collectionUrl, (err, result) => {
-            if (err) {
-                if (err.code == "404") {
-                    client.createCollection(databaseUrl, config.collection, { offerThroughput: 400 }, (err, created) => {
-                        if (err) reject(err)
-                        else resolve(created);
-                    });
-                } else {
-                    reject(err);
-                }
-            } else {
-                resolve(result);
-            }
-        });
-    });
-}
-function getFamilyDocument(document) {
-    let documentUrl = `${collectionUrl}/docs/${document.id}`;
-    console.log(`Getting document:\n${document.id}\n`);
-
-    return new Promise((resolve, reject) => {
-        client.readDocument(documentUrl, { partitionKey: document.district }, (err, result) => {
-            if (err) {
-                if (err.code == "404") {
-                    client.createDocument(collectionUrl, document, (err, created) => {
-                        if (err) reject(err)
-                        else resolve(created);
-                    });
-                } else {
-                    reject(err);
-                }
-            } else {
-                resolve(result);
-            }
-        });
-    });
-};
 module.exports = router;
