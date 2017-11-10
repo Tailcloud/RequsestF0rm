@@ -5,8 +5,12 @@ const passport = require('passport');
 var tokens = "";
 /*new for db*/
 var MongoClient = require("mongodb").MongoClient;
+// mongoClient.connect("mongodb://f0rmongodb:1XXXG3icYsO3hptov2ativVOlQbfzmk3s7oPYgWrkARroEHt32qzAm7crmVaa3FT34CwvNCeIdwaRKsV2CDtjw==@f0rmongodb.documents.azure.com:10255/?ssl=true", function (err, db) {
+//   db.close();
+// });
 var assert = require('assert');
 var ObjectId = require('mongodb').ObjectID;
+// var url = "mongodb://f0rmongodb:1XXXG3icYsO3hptov2ativVOlQbfzmk3s7oPYgWrkARroEHt32qzAm7crmVaa3FT34CwvNCeIdwaRKsV2CDtjw==@f0rmongodb.documents.azure.com:10255/?ssl=true";
 var url = 'mongodb://localhost:27017/requestf0rmdb';
 
 router.get('/',(req,res)=>{
